@@ -7,7 +7,7 @@ export class PersonalityController {
 
   @Get('access/:sessionId')
   checkAccess(@Param('sessionId') sessionId: string) {
-return this.personalityService.canAccessStage2(sessionId);
+    return this.personalityService.canAccessStage2(sessionId);
   }
 
   // @Post('start/:sessionId')
@@ -21,26 +21,28 @@ return this.personalityService.canAccessStage2(sessionId);
     @Param('energyCenter') energyCenter: string,
   ) {
     const center = energyCenter.toUpperCase() as 'GUT' | 'HEART' | 'HEAD';
-    return this.personalityService.getNextQuestion(
+    return this.personalityService.getNextQuestion(sessionId, center);
+  }
+
+  @Post(':sessionId/:energyCenter/answer')
+  async submitAnswer(
+    @Param('sessionId') sessionId: string,
+    @Param('energyCenter') energyCenter: string,
+    @Body() body: { questionId: number; answerOptionId: number },
+  ) {
+    const center = energyCenter.toUpperCase() as 'GUT' | 'HEART' | 'HEAD';
+
+    // 1. Resolve personality session
+    const ps = await this.personalityService.getOrCreatePersonalitySession(
       sessionId,
       center,
     );
+
+    // 2. Submit answer (ONLY 3 args)
+    return this.personalityService.submitAnswer(
+      ps.id,
+      body.questionId,
+      body.answerOptionId,
+    );
   }
-
-@Post(':sessionId/:energyCenter/answer')
-submitAnswer(
-  @Param('sessionId') sessionId: string,
-  @Param('energyCenter') energyCenter: string,
-  @Body() body: { questionId: number; answerOptionId: number },
-) {
-  return this.personalityService.submitAnswer(
-    sessionId,
-    energyCenter.toUpperCase(),
-    body.questionId,
-    body.answerOptionId,
-  );
-}
-
-
-
 }

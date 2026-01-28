@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { TestSession } from '../sessions/test-session.entity';
-import { AssessmentStage } from '../assessments/assessment-stage.entity';
+import { TestSession } from '../sessions/entities/test-session.entity';
+import { AssessmentStage } from './entities/assessment-stage.entity';
 
 import { PersonalitySession } from './entities/personality-session.entity';
 import { PersonalityQuestion } from './entities/personality-question.entity';
@@ -79,6 +79,18 @@ export class PersonalityService {
   /* -----------------------------------------
      GET NEXT QUESTION
   ------------------------------------------*/
+
+  private energyCenterToId(center: 'GUT' | 'HEART' | 'HEAD'): number {
+    switch (center) {
+      case 'GUT':
+        return 1;
+      case 'HEART':
+        return 2;
+      case 'HEAD':
+        return 3;
+    }
+  }
+
   async getNextQuestion(
     testSessionId: string,
     energyCenter: 'GUT' | 'HEART' | 'HEAD',
@@ -88,11 +100,17 @@ export class PersonalityService {
       energyCenter,
     );
 
-    // Resolve assessment stage
+    // Prevent asking questions after completion
+    if (ps.completedAt) {
+      return null;
+    }
+    const energyCenterId = this.energyCenterToId(energyCenter);
+
     const stage = await this.stageRepo.findOne({
       where: {
         assessmentId: 1,
-        personalityType: energyCenter,
+        stageOrder: 2,
+        energyCenterId,
       },
     });
 
@@ -104,15 +122,14 @@ export class PersonalityService {
       where: { personalitySessionId: ps.id },
     });
 
-    const answeredIds = answered.map(r => r.questionId);
+    const answeredIds = answered.map((r) => r.questionId);
 
     const question = await this.questionRepo
       .createQueryBuilder('q')
       .where('q.stage_id = :stageId', { stageId: stage.id })
-      .andWhere(
-        answeredIds.length ? 'q.id NOT IN (:...ids)' : '1=1',
-        { ids: answeredIds },
-      )
+      .andWhere(answeredIds.length ? 'q.id NOT IN (:...ids)' : '1=1', {
+        ids: answeredIds,
+      })
       .orderBy('q.question_order', 'ASC')
       .getOne();
 
@@ -157,6 +174,14 @@ export class PersonalityService {
      CALCULATE RESULT
   ------------------------------------------*/
   async calculateResult(personalitySessionId: number) {
+    const session = await this.personalitySessionRepo.findOne({
+      where: { id: personalitySessionId },
+    });
+
+    if (!session || session.completedAt) {
+      throw new Error('Personality session already completed or not found');
+    }
+
     const rows = await this.responseRepo
       .createQueryBuilder('r')
       .innerJoin(
@@ -165,12 +190,12 @@ export class PersonalityService {
         'ao.id = r.answer_option_id',
       )
       .select([
-        'ao.personality_type_id AS personalityTypeId',
-        'SUM(ao.score) AS totalScore',
+        'ao.personality_type_id AS personality_type_id',
+        'SUM(ao.score) AS total_score',
       ])
       .where('r.personality_session_id = :id', { id: personalitySessionId })
       .groupBy('ao.personality_type_id')
-      .orderBy('totalScore', 'DESC')
+      .orderBy('total_score', 'DESC')
       .getRawMany();
 
     if (!rows.length) {
@@ -178,10 +203,10 @@ export class PersonalityService {
     }
 
     await this.breakdownRepo.save(
-      rows.map(r => ({
+      rows.map((r) => ({
         personalitySessionId,
-        personalityTypeId: Number(r.personalitytypeid),
-        score: Number(r.totalscore),
+        personalityTypeId: Number(r.personality_type_id),
+        score: Number(r.total_score),
       })),
     );
 
@@ -189,17 +214,17 @@ export class PersonalityService {
       completedAt: new Date(),
     });
 
-    const topScore = Number(rows[0].totalscore);
+    const topScore = Number(rows[0].total_score);
     const dominant = rows
-      .filter(r => Number(r.totalscore) === topScore)
+      .filter((r) => Number(r.total_score) === topScore)
       .slice(0, 2)
-      .map(r => Number(r.personalitytypeid));
+      .map((r) => Number(r.personality_type_id));
 
     return {
       dominantPersonalityTypeIds: dominant,
-      breakdown: rows.map(r => ({
-        personalityTypeId: Number(r.personalitytypeid),
-        score: Number(r.totalscore),
+      breakdown: rows.map((r) => ({
+        personalityTypeId: Number(r.personality_type_id),
+        score: Number(r.total_score),
       })),
     };
   }
