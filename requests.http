@@ -1,0 +1,53 @@
+### List all sessions
+GET http://localhost:3000/
+
+
+### Create a new session
+POST http://localhost:3000/sessions/start
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+
+
+### Get session details
+GET http://localhost:3000/energy/next/97aa4718-38f2-445e-b9dd-513456b7769d
+
+
+### Submit energy rankings
+POST http://localhost:3000/energy/submit
+Content-Type: application/json
+
+{
+  "sessionId": "97aa4718-38f2-445e-b9dd-513456b7769d",
+  "energyStatementGroupId": 10,
+  "rankings": [
+    { "statementId": 1, "rankId": 1},
+    { "statementId": 2, "rankId": 2},
+    { "statementId": 3, "rankId": 3}
+  ]
+}
+
+### Finish stage 1 of the session
+POST http://localhost:3000/energy/finish/97aa4718-38f2-445e-b9dd-513456b7769d
+
+
+### Get Personality Test Access
+GET http://localhost:3000/personality/access/97aa4718-38f2-445e-b9dd-513456b7769d
+
+
+### Post Personality - start session
+POST http://localhost:3000/personality/start/97aa4718-38f2-445e-b9dd-513456b7769d
+
+### Get next Personality question
+GET http://localhost:3000/personality/97aa4718-38f2-445e-b9dd-513456b7769d/GUT/next
+
+### Submit Personality answer
+POST http://localhost:3000/personality/97aa4718-38f2-445e-b9dd-513456b7769d/GUT/answer
+Content-Type: application/json
+
+{
+  "questionId": 45,
+  "answerOptionId": 3
+} 
