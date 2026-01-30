@@ -106,16 +106,21 @@ export class PersonalityService {
     }
     const energyCenterId = this.energyCenterToId(energyCenter);
 
+    const energyCenterMap = {
+      GUT: 1,
+      HEART: 2,
+      HEAD: 3,
+    };
+
     const stage = await this.stageRepo.findOne({
       where: {
         assessmentId: 1,
-        stageOrder: 2,
-        energyCenterId,
+        energyCenterId: energyCenterMap[energyCenter],
       },
     });
 
     if (!stage) {
-      throw new Error('Assessment stage not found');
+      throw new Error(`Assessment stage not found for ${energyCenter}`);
     }
 
     const answered = await this.responseRepo.find({
@@ -184,18 +189,28 @@ export class PersonalityService {
 
     const rows = await this.responseRepo
       .createQueryBuilder('r')
+      // .innerJoin(
+      //   'personality_answer_options',
+      //   'ao',
+      //   'ao.id = r.answer_option_id',
+      // )
+      // .select([
+      //   'ao.personality_type_id AS personality_type_id',
+      //   'SUM(ao.score) AS total_score',
+      // ])
+      .innerJoin('personality_questions', 'q', 'q.id = r.question_id')
       .innerJoin(
         'personality_answer_options',
         'ao',
         'ao.id = r.answer_option_id',
       )
       .select([
-        'ao.personality_type_id AS personality_type_id',
-        'SUM(ao.score) AS total_score',
+        'q.personality_type_id AS personalitytypeid',
+        'SUM(ao.score) AS totalscore',
       ])
       .where('r.personality_session_id = :id', { id: personalitySessionId })
-      .groupBy('ao.personality_type_id')
-      .orderBy('total_score', 'DESC')
+      .groupBy('q.personality_type_id')
+      .orderBy('totalscore', 'DESC')
       .getRawMany();
 
     if (!rows.length) {
@@ -205,26 +220,35 @@ export class PersonalityService {
     await this.breakdownRepo.save(
       rows.map((r) => ({
         personalitySessionId,
-        personalityTypeId: Number(r.personality_type_id),
-        score: Number(r.total_score),
+        personalityTypeId: Number(r.personalitytypeid),
+        score: Number(r.totalscore),
       })),
+    );
+    //To be removed later: debugging logs
+    console.log('Rows:', rows);
+    console.log('First row total_score:', rows[0].totalscore);
+    console.log('First row personality_type_id:', rows[0].personalitytypeid);
+    console.log('Type of total_score:', typeof rows[0].totalscore);
+    console.log(
+      'Type of personality_type_id:',
+      typeof rows[0].personalitytypeid,
     );
 
     await this.personalitySessionRepo.update(personalitySessionId, {
       completedAt: new Date(),
     });
 
-    const topScore = Number(rows[0].total_score);
+    const topScore = Number(rows[0].totalscore);
+
     const dominant = rows
-      .filter((r) => Number(r.total_score) === topScore)
-      .slice(0, 2)
-      .map((r) => Number(r.personality_type_id));
+      .filter((r) => Number(r.totalscore) === topScore)
+      .map((r) => Number(r.personalitytypeid));
 
     return {
       dominantPersonalityTypeIds: dominant,
       breakdown: rows.map((r) => ({
-        personalityTypeId: Number(r.personality_type_id),
-        score: Number(r.total_score),
+        personalityTypeId: Number(r.personalitytypeid),
+        score: Number(r.totalscore),
       })),
     };
   }

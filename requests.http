@@ -14,7 +14,6 @@ Content-Type: application/json
 ### Get session details
 GET http://localhost:3000/energy/next/97aa4718-38f2-445e-b9dd-513456b7769d
 
-
 ### Submit energy rankings
 POST http://localhost:3000/energy/submit
 Content-Type: application/json
@@ -40,8 +39,12 @@ GET http://localhost:3000/personality/access/97aa4718-38f2-445e-b9dd-513456b7769
 ### Post Personality - start session
 POST http://localhost:3000/personality/start/97aa4718-38f2-445e-b9dd-513456b7769d
 
+
+
 ### Get next Personality question
 GET http://localhost:3000/personality/97aa4718-38f2-445e-b9dd-513456b7769d/GUT/next
+
+
 
 ### Submit Personality answer
 POST http://localhost:3000/personality/97aa4718-38f2-445e-b9dd-513456b7769d/GUT/answer

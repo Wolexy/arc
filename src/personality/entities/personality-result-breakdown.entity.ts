@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
-@Entity('personality_result_breakdown')
+@Entity('personality_result_breakdowns')
 export class PersonalityResultBreakdown {
   @PrimaryGeneratedColumn()
   id: number;
