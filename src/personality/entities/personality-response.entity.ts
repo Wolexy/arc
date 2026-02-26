@@ -19,8 +19,8 @@ export class PersonalityResponse {
   @Column({ name: 'question_id', type: 'int' })
   questionId: number;
 
-  @Column({ name: 'answer_option_id', type: 'int' })
-  answerOptionId: number;
+  @Column({ name: 'rank_choice_id', type: 'int' })
+  rankChoiceId: number;
 
   @CreateDateColumn({ name: 'answered_at' })
   answeredAt: Date;

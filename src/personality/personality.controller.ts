@@ -10,10 +10,15 @@ export class PersonalityController {
     return this.personalityService.canAccessStage2(sessionId);
   }
 
-  // @Post('start/:sessionId')
-  // start(@Param('sessionId') sessionId: string) {
-  //   return this.personalityService.startPersonality(sessionId);
-  // }
+  @Post('start/:sessionId')
+  start(@Param('sessionId') sessionId: string) {
+    return this.personalityService.startPersonality(sessionId);
+  }
+
+  @Get(':sessionId/status')
+  async status(@Param('sessionId') sessionId: string) {
+    return this.personalityService.getStatus(sessionId);
+  }
 
   @Get(':sessionId/:energyCenter/next')
   getNextQuestion(
@@ -28,7 +33,7 @@ export class PersonalityController {
   async submitAnswer(
     @Param('sessionId') sessionId: string,
     @Param('energyCenter') energyCenter: string,
-    @Body() body: { questionId: number; answerOptionId: number },
+    @Body() body: { questionId: number; rankChoiceId: number },
   ) {
     const center = energyCenter.toUpperCase() as 'GUT' | 'HEART' | 'HEAD';
 
@@ -40,9 +45,15 @@ export class PersonalityController {
 
     // 2. Submit answer (ONLY 3 args)
     return this.personalityService.submitAnswer(
-      ps.id,
+      sessionId,
+      center,
       body.questionId,
-      body.answerOptionId,
+      body.rankChoiceId,
     );
+  }
+
+  @Get('next-center/:sessionId')
+  async nextCenter(@Param('sessionId') sessionId: string) {
+    return this.personalityService.getNextEnergyCenter(sessionId);
   }
 }

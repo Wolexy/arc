@@ -11,14 +11,10 @@ import { PersonalityQuestion } from './entities/personality-question.entity';
 import { PersonalityAnswerOption } from './entities/personality-answer-option.entity';
 import { PersonalityResponse } from './entities/personality-response.entity';
 import { PersonalityResultBreakdown } from './entities/personality-result-breakdown.entity';
-import { AssessmentStage } from './entities/assessment-stage.entity';  
+import { PersonalityRankChoice } from './entities/personality-rank-choice.entity';
+//import { AssessmentStage } from './entities/assessment-stage.entity';  
 
 import { TestSession } from '../sessions/entities/test-session.entity';
-
-// import { EnergyResultEligibleCenter } from '../energy/entities/energy-result-eligible.entity';
-// import { PersonalityResult } from './entities/personality-result.entity';
-// import {PersonalityResultType} from './entities/personality-result-type.entity'
-
 
 @Module({
   imports: [
@@ -27,12 +23,10 @@ import { TestSession } from '../sessions/entities/test-session.entity';
       PersonalityQuestion,
       PersonalityAnswerOption,
       PersonalityResponse,
-     // EnergyResultEligibleCenter,
+      PersonalityAnswerOption,
       PersonalitySession,
-     // PersonalityResult,
       PersonalityResultBreakdown,
-     // PersonalityResultType,
-      AssessmentStage,
+      PersonalityRankChoice,
     ]),
     UsersModule,
   ],

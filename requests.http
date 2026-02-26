@@ -2,55 +2,67 @@
 GET http://localhost:3000/
 
 
-### Create a new session
+### 1 - Create a new session
 POST http://localhost:3000/sessions/start
 Content-Type: application/json
 
 {
-  "email": "user@example.com"
+  "email": "test@test.com"
 }
 
 
-### Get session details
-GET http://localhost:3000/energy/next/97aa4718-38f2-445e-b9dd-513456b7769d
+### 2a - Get session details
+GET http://localhost:3000/energy/next/11e653aa-4c30-4eac-9f5b-e1b5274f01da
 
-### Submit energy rankings
+
+
+### 2b - Submit energy rankings
 POST http://localhost:3000/energy/submit
 Content-Type: application/json
 
 {
-  "sessionId": "97aa4718-38f2-445e-b9dd-513456b7769d",
+  "sessionId": "11e653aa-4c30-4eac-9f5b-e1b5274f01da",
   "energyStatementGroupId": 10,
   "rankings": [
-    { "statementId": 1, "rankId": 1},
-    { "statementId": 2, "rankId": 2},
-    { "statementId": 3, "rankId": 3}
+    { "statementId": 28, "rankId": 3},
+    { "statementId": 29, "rankId": 1},
+    { "statementId": 30, "rankId": 2}
   ]
 }
 
-### Finish stage 1 of the session
-POST http://localhost:3000/energy/finish/97aa4718-38f2-445e-b9dd-513456b7769d
+### 3 - Finish stage 1 of the session
+POST http://localhost:3000/energy/finish/11e653aa-4c30-4eac-9f5b-e1b5274f01da
 
 
-### Get Personality Test Access
-GET http://localhost:3000/personality/access/97aa4718-38f2-445e-b9dd-513456b7769d
+### 4 - Get Personality Test Access
+GET http://localhost:3000/personality/access/11e653aa-4c30-4eac-9f5b-e1b5274f01da
 
 
-### Post Personality - start session
-POST http://localhost:3000/personality/start/97aa4718-38f2-445e-b9dd-513456b7769d
+### 5 - Post Personality - start session - call on after 4 - get access returns true
+POST http://localhost:3000/personality/start/11e653aa-4c30-4eac-9f5b-e1b5274f01da
 
 
-
-### Get next Personality question
-GET http://localhost:3000/personality/97aa4718-38f2-445e-b9dd-513456b7769d/GUT/next
-
+### Get Personality Session Status
+GET http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/status
 
 
-### Submit Personality answer
-POST http://localhost:3000/personality/97aa4718-38f2-445e-b9dd-513456b7769d/GUT/answer
+//**************************************************
+//  Personality Test
+//
+//**************************************************
+### 6a - Get next Personality question
+GET http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/HEAD/next
+
+
+### 6b Submit Personality answer
+POST http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/HEAD/answer
 Content-Type: application/json
 
 {
-  "questionId": 45,
-  "answerOptionId": 3
+  "questionId": 90,
+  "rankChoiceId": 2
 } 
+
+
+### 7 - get next energy center to determine personality type to run in 6a and 6b
+GET http://localhost:3000/personality/next-center/11e653aa-4c30-4eac-9f5b-e1b5274f01da
