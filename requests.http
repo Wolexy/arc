@@ -66,3 +66,7 @@ Content-Type: application/json
 
 ### 7 - get next energy center to determine personality type to run in 6a and 6b
 GET http://localhost:3000/personality/next-center/11e653aa-4c30-4eac-9f5b-e1b5274f01da
+
+
+### 8 - Get final personality result
+GET http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/final

@@ -12,7 +12,7 @@ import { PersonalityAnswerOption } from './entities/personality-answer-option.en
 import { PersonalityResponse } from './entities/personality-response.entity';
 import { PersonalityResultBreakdown } from './entities/personality-result-breakdown.entity';
 import { PersonalityRankChoice } from './entities/personality-rank-choice.entity';
-//import { AssessmentStage } from './entities/assessment-stage.entity';  
+import { FinalPersonalityResult } from './entities/final-personality-result.entity';
 
 import { TestSession } from '../sessions/entities/test-session.entity';
 
@@ -27,6 +27,7 @@ import { TestSession } from '../sessions/entities/test-session.entity';
       PersonalitySession,
       PersonalityResultBreakdown,
       PersonalityRankChoice,
+      FinalPersonalityResult,
     ]),
     UsersModule,
   ],

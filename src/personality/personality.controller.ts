@@ -56,4 +56,9 @@ export class PersonalityController {
   async nextCenter(@Param('sessionId') sessionId: string) {
     return this.personalityService.getNextEnergyCenter(sessionId);
   }
+
+  @Get(':sessionId/final')
+  async getFinal(@Param('sessionId') sessionId: string) {
+    return this.personalityService.aggregateFinalPersonality(sessionId);
+  }
 }

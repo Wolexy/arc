@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Not, IsNull } from 'typeorm';
 import { TestSession } from '../sessions/entities/test-session.entity';
 //import { AssessmentStage } from './entities/assessment-stage.entity';
 import { PersonalitySession } from './entities/personality-session.entity';
@@ -9,6 +10,7 @@ import { PersonalityResponse } from './entities/personality-response.entity';
 import { PersonalityResultBreakdown } from './entities/personality-result-breakdown.entity';
 import { PersonalityRankChoice } from './entities/personality-rank-choice.entity';
 import { PersonalityAnswerOption } from './entities/personality-answer-option.entity';
+import { FinalPersonalityResult } from './entities/final-personality-result.entity';
 
 @Injectable()
 export class PersonalityService {
@@ -33,6 +35,9 @@ export class PersonalityService {
 
     @InjectRepository(PersonalityResultBreakdown)
     private breakdownRepo: Repository<PersonalityResultBreakdown>,
+
+    @InjectRepository(FinalPersonalityResult)
+    private finalResultRepo: Repository<FinalPersonalityResult>,
   ) {}
 
   /* -----------------------------------------
@@ -419,6 +424,72 @@ export class PersonalityService {
     return {
       started: true,
       centers: created.map((c) => c.energyCenter),
+    };
+  }
+
+  /*********************Final Aggregation Results**********************/
+
+  async aggregateFinalPersonality(testSessionId: string) {
+    // 1️⃣ get completed personality sessions
+    const sessions = await this.personalitySessionRepo.find({
+      where: {
+        testSessionId,
+        completedAt: Not(IsNull()),
+      },
+    });
+
+    if (!sessions.length) {
+      throw new Error('No completed personality assessments');
+    }
+
+    const sessionIds = sessions.map((s) => s.id);
+
+    // 2️⃣ merge all breakdown scores across centers
+    const rows = await this.breakdownRepo
+      .createQueryBuilder('b')
+      .select([
+        'b.personality_type_id AS personalitytypeid',
+        'SUM(b.score) AS totalscore',
+      ])
+      .where('b.personality_session_id IN (:...ids)', {
+        ids: sessionIds,
+      })
+      .groupBy('b.personality_type_id')
+      .orderBy('totalscore', 'DESC')
+      .getRawMany();
+
+    if (!rows.length) {
+      throw new Error('No breakdown scores found');
+    }
+
+    // normalize result
+    const results = rows.map((r) => ({
+      personalityTypeId: Number(r.personalitytypeid),
+      totalScore: Number(r.totalscore),
+    }));
+
+    // 3️⃣ determine highest score
+    const topScore = Math.max(...results.map((r) => r.totalScore));
+
+    // 4️⃣ delete old final results (if re-run)
+    await this.finalResultRepo.delete({ testSessionId });
+
+    // 5️⃣ persist ALL personality scores
+    const records = results.map((r) => ({
+      testSessionId,
+      personalityTypeId: r.personalityTypeId,
+      totalScore: r.totalScore,
+      isDominant: r.totalScore === topScore,
+    }));
+
+    await this.finalResultRepo.save(records);
+
+    return {
+      dominantPersonalityTypeIds: records
+        .filter((r) => r.isDominant)
+        .map((r) => r.personalityTypeId),
+
+      breakdown: records,
     };
   }
 }
