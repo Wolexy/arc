@@ -14,9 +14,18 @@ export class EnergyResult {
   @Column({ name: 'head_score', type: 'int' })
   headScore: number;
 
-  @Column({ name: 'dominant_center', type: 'varchar', nullable: true , length: 10 })
+  @Column({
+    name: 'dominant_center',
+    type: 'varchar',
+    nullable: true,
+    length: 10,
+  })
   dominantCenter?: string | null;
 
-  @CreateDateColumn({ name: 'calculated_at', type : 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({
+    name: 'calculated_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   calculatedAt: Date;
 }

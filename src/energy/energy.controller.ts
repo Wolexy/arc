@@ -1,6 +1,10 @@
 import { Controller, Get, Param, Body, Post } from '@nestjs/common';
 import { EnergyService } from './energy.service';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SubmitEnergyDto } from './dto/submit-energy.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('energy')
 export class EnergyController {
   constructor(private readonly energyService: EnergyService) {}
@@ -11,7 +15,7 @@ export class EnergyController {
   }
 
   @Post('submit')
-  async submit(@Body() body: any) {
+  async submit(@Body() body: SubmitEnergyDto) {
     return this.energyService.submitGroupRanking(
       body.sessionId,
       body.energyStatementGroupId,

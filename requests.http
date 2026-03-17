@@ -70,3 +70,29 @@ GET http://localhost:3000/personality/next-center/11e653aa-4c30-4eac-9f5b-e1b527
 
 ### 8 - Get final personality result
 GET http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/final
+
+
+### Register a new user
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "password123",
+  "confirmPassword": "password123"
+}
+
+### Login
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "password123"
+}
+
+### Get Session Endpoing
+GET http://localhost:3000/sessions/progress/
+
+### Get User Details
+GET http://localhost:3000/users/me

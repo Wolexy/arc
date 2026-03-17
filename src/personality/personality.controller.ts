@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { PersonalityService } from './personality.service';
+import { JwtAuthGuard, AccessGuard } from '../auth/jwt-auth.guard';
+import { SubmitAnswerDto } from './dto/submit-answer.dto';
 
 @Controller('personality')
+@UseGuards(JwtAuthGuard, AccessGuard)
 export class PersonalityController {
   constructor(private readonly personalityService: PersonalityService) {}
 
@@ -26,6 +29,7 @@ export class PersonalityController {
     @Param('energyCenter') energyCenter: string,
   ) {
     const center = energyCenter.toUpperCase() as 'GUT' | 'HEART' | 'HEAD';
+
     return this.personalityService.getNextQuestion(sessionId, center);
   }
 
@@ -33,17 +37,10 @@ export class PersonalityController {
   async submitAnswer(
     @Param('sessionId') sessionId: string,
     @Param('energyCenter') energyCenter: string,
-    @Body() body: { questionId: number; rankChoiceId: number },
+    @Body() body: SubmitAnswerDto,
   ) {
     const center = energyCenter.toUpperCase() as 'GUT' | 'HEART' | 'HEAD';
 
-    // 1. Resolve personality session
-    const ps = await this.personalityService.getOrCreatePersonalitySession(
-      sessionId,
-      center,
-    );
-
-    // 2. Submit answer (ONLY 3 args)
     return this.personalityService.submitAnswer(
       sessionId,
       center,

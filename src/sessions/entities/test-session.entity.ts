@@ -13,8 +13,8 @@ export class TestSession {
   @Column({ name: 'user_id', type: 'int', nullable: true })
   userId: number | null;
 
-  @Column({ name: 'guest_email', type:'text', nullable: true })
-  guestEmail: string | null;
+  @Column({ name: 'user_email', type: 'text', nullable: true })
+  userEmail: string | null;
 
   @CreateDateColumn({ name: 'started_at' })
   startedAt: Date;
@@ -27,4 +27,5 @@ export class TestSession {
 
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt: Date | null;
+  user: any;
 }

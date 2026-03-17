@@ -1,16 +1,29 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { SessionsService } from './sessions.service';
+import type { AuthRequest } from 'src/auth/interface/auth-request.interface';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @Controller('sessions')
 export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post('start')
-  async start(@Body('email') email: string) {
-    const session = await this.sessionsService.startGuestSession(email);
-    return {
-      session_id: session.id,
-      message: 'Guest session started successfully',
-    };
+  async start(@Req() req: AuthRequest) {
+    const userId = req.user.userId;
+    return this.sessionsService.startUserSession(userId);
+  }
+
+  @Get('progress/:sessionId')
+  async progress(@Param('sessionId') sessionId: string) {
+    return this.sessionsService.getProgress(sessionId);
   }
 }

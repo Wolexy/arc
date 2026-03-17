@@ -8,9 +8,11 @@ import { EnergyStatementRanking } from './entities/energy-statement-ranking.enti
 import { EnergyResult } from './entities/energy-result.entity';
 import { EnergyResultEligibleCenter } from './entities/energy-result-eligible.entity';
 import { TestSession } from 'src/sessions/entities/test-session.entity';
+import { EnergyScoreRow } from '../energy/dto/energy-score-row.dto';
 
 @Injectable()
 export class EnergyService {
+  private totalGroups: number;
   constructor(
     @InjectRepository(EnergyStatementGroup)
     private groupRepo: Repository<EnergyStatementGroup>,
@@ -32,7 +34,16 @@ export class EnergyService {
 
     @InjectRepository(TestSession)
     private sessionRepo: Repository<TestSession>,
-  ) {}
+  ) {
+    this.groupRepo
+      .count()
+      .then((count) => {
+        this.totalGroups = count;
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }
 
   async getNextGroup(sessionId: string) {
     // 1. Find groups already answered
@@ -56,6 +67,9 @@ export class EnergyService {
       return null; // Stage 1 complete
     }
 
+    // may fetch totalGroups instead of from constructor
+    //const totalGroups = await this.groupRepo.count();
+
     // 3. Fetch statements
     const statements = await this.statementRepo.find({
       where: { groupId: nextGroup.id },
@@ -65,6 +79,7 @@ export class EnergyService {
     return {
       groupId: nextGroup.id,
       groupNo: nextGroup.groupNo,
+      totalGroups: this.totalGroups,
       statements,
     };
   }
@@ -143,7 +158,7 @@ export class EnergyService {
         'SUM(rc.weight) AS score',
       ])
       .groupBy('UPPER(s.personality_type)')
-      .getRawMany();
+      .getRawMany<EnergyScoreRow>();
 
     const totals: Record<string, number> = {
       GUT: 0,
