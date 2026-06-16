@@ -27,4 +27,9 @@ export class EnergyController {
   async finish(@Param('sessionId') sessionId: string) {
     return this.energyService.finishStage1(sessionId);
   }
+
+  @Post('unlock/:sessionId')
+  unlock(@Param('sessionId') sessionId: string) {
+    return this.energyService.unlockStage2(sessionId);
+  }
 }

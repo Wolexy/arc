@@ -7,6 +7,8 @@ import { EnergyModule } from './energy/energy.module';
 import { PersonalityModule } from './personality/personality.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { ConfigModule } from '@nestjs/config';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -20,6 +22,11 @@ import { AuthModule } from './auth/auth.module';
       autoLoadEntities: true,
       synchronize: false, // Very important to avoid data loss in production as DB is already designed.
     }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }) as any,
+    AdminModule,
     SessionsModule,
     EnergyModule,
     PersonalityModule,

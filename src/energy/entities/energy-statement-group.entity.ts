@@ -3,11 +3,11 @@ import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 @Entity({ name: 'energy_statement_groups' })
 export class EnergyStatementGroup {
   @PrimaryGeneratedColumn('uuid')
-  id: number;
+  id!: number;
 
   @Column({ name: 'stage_id' })
-  stageId: number;
+  stageId!: number;
 
   @Column({ name: 'group_no' })
-  groupNo: number;
+  groupNo!: number;
 }

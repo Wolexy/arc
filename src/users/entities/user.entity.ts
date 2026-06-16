@@ -1,4 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { OneToMany } from 'typeorm';
+
+import { TestSession } from '../../sessions/entities/test-session.entity';
 
 @Entity({ name: 'users' })
 export class User {
@@ -23,6 +26,9 @@ export class User {
   @Column({ name: 'access_granted_at', nullable: true })
   accessGrantedAt: Date;
 
+  @Column({ name: 'access_granted_by', nullable: true })
+  accessGrantedBy: number;
+
   @Column({ name: 'last_login_at', nullable: true })
   lastLoginAt: Date;
 
@@ -38,4 +44,11 @@ export class User {
     nullable: true,
   })
   emailVerificationExpires?: Date;
+
+  @OneToMany(
+    () => TestSession,
+
+    (session) => session.user,
+  )
+  testSessions: TestSession[];
 }

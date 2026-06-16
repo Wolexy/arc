@@ -1,71 +1,179 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Not, IsNull } from 'typeorm';
+import { Repository, IsNull, Not } from 'typeorm';
 import { TestSession } from '../sessions/entities/test-session.entity';
-//import { AssessmentStage } from './entities/assessment-stage.entity';
 import { PersonalitySession } from './entities/personality-session.entity';
 import { PersonalityQuestion } from './entities/personality-question.entity';
+import { PersonalityRankChoice } from './entities/personality-rank-choice.entity';
 import { PersonalityResponse } from './entities/personality-response.entity';
 import { PersonalityResultBreakdown } from './entities/personality-result-breakdown.entity';
-import { PersonalityRankChoice } from './entities/personality-rank-choice.entity';
-import { PersonalityAnswerOption } from './entities/personality-answer-option.entity';
 import { FinalPersonalityResult } from './entities/final-personality-result.entity';
+import { User } from '../users/entities/user.entity';
+import { PersonalityTypeDescription } from './entities/personality-type-description.entity';
+import { PersonalityType } from './entities/personality-type.entity';
+import { FinalReportDto } from './dto/final-report.dto';
+import { DominantTypeReportDto } from './dto/dominant-type-report.dto';
+import { RunnerUpTypeReportDto } from './dto/runner-up-type-report.dto';
+
+type EnergyCenter = 'GUT' | 'HEART' | 'HEAD';
+
+interface EnergyCenterRow {
+  energy_center: EnergyCenter;
+}
+
+interface ScoreRow {
+  personalitytypeid: string;
+  totalscore: string;
+}
 
 @Injectable()
 export class PersonalityService {
   constructor(
     @InjectRepository(TestSession)
-    private testSessionRepo: Repository<TestSession>,
+    private readonly testSessionRepo: Repository<TestSession>,
 
     @InjectRepository(PersonalitySession)
-    private personalitySessionRepo: Repository<PersonalitySession>,
+    private readonly personalitySessionRepo: Repository<PersonalitySession>,
 
     @InjectRepository(PersonalityQuestion)
-    private questionRepo: Repository<PersonalityQuestion>,
-
-    @InjectRepository(PersonalityAnswerOption)
-    private answerRepo: Repository<PersonalityAnswerOption>,
+    private readonly questionRepo: Repository<PersonalityQuestion>,
 
     @InjectRepository(PersonalityRankChoice)
-    private rankRepo: Repository<PersonalityRankChoice>,
+    private readonly rankRepo: Repository<PersonalityRankChoice>,
 
     @InjectRepository(PersonalityResponse)
-    private responseRepo: Repository<PersonalityResponse>,
+    private readonly responseRepo: Repository<PersonalityResponse>,
 
     @InjectRepository(PersonalityResultBreakdown)
-    private breakdownRepo: Repository<PersonalityResultBreakdown>,
+    private readonly breakdownRepo: Repository<PersonalityResultBreakdown>,
 
     @InjectRepository(FinalPersonalityResult)
-    private finalResultRepo: Repository<FinalPersonalityResult>,
+    private readonly finalResultRepo: Repository<FinalPersonalityResult>,
+
+    @InjectRepository(PersonalityType)
+    private readonly personalityTypeRepo: Repository<PersonalityType>,
+
+    @InjectRepository(PersonalityTypeDescription)
+    private readonly personalityTypeDescriptionRepo: Repository<PersonalityTypeDescription>,
+
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   /* -----------------------------------------
      ACCESS GATE
   ------------------------------------------*/
+
   async canAccessStage2(testSessionId: string) {
     const session = await this.testSessionRepo.findOne({
       where: { id: testSessionId },
     });
 
-    if (!session?.stage1CompletedAt) {
-      return { allowed: false, reason: 'STAGE1_NOT_COMPLETED' };
+    if (!session) {
+      return {
+        allowed: false,
+        reason: 'SESSION_NOT_FOUND',
+      };
     }
 
-    if (!session.stage2UnlockedAt) {
-      return { allowed: false, reason: 'AUTH_REQUIRED' };
+    if (!session.stage1CompletedAt) {
+      return {
+        allowed: false,
+        reason: 'STAGE1_NOT_COMPLETED',
+      };
+    }
+    if (!session.userId) {
+      return {
+        allowed: false,
+        reason: 'SESSION_HAS_NO_USER',
+      };
+    }
+    const user = await this.userRepo.findOne({
+      where: { id: session.userId },
+    });
+
+    if (!user?.accessGranted) {
+      return {
+        allowed: false,
+        reason: 'AUTH_REQUIRED',
+      };
     }
 
-    return { allowed: true };
+    return {
+      allowed: true,
+    };
   }
 
   /* -----------------------------------------
-     GET OR CREATE PERSONALITY SESSION
+     START PERSONALITY
+  ------------------------------------------*/
+  async startPersonality(testSessionId: string) {
+    const session = await this.testSessionRepo.findOne({
+      where: { id: testSessionId },
+    });
+
+    if (!session) throw new UnauthorizedException('Session not found');
+    if (!session.stage1CompletedAt)
+      throw new UnauthorizedException('STAGE1_NOT_COMPLETED');
+
+    // auto unlock (DEV-friendly)
+    if (!session.stage2UnlockedAt) {
+      await this.testSessionRepo.update(testSessionId, {
+        stage2UnlockedAt: new Date(),
+      });
+    }
+
+    const access = await this.canAccessStage2(testSessionId);
+    if (!access.allowed) throw new UnauthorizedException(access.reason);
+
+    const rows: EnergyCenterRow[] = await this.testSessionRepo.manager.query(
+      `
+        SELECT energy_center
+        FROM energy_result_eligible_centers
+        WHERE session_id = $1
+      `,
+      [testSessionId],
+    );
+
+    if (!rows.length) throw new NotFoundException('No eligible centers found');
+
+    const created: PersonalitySession[] = [];
+
+    for (const row of rows) {
+      const center = row.energy_center;
+
+      let ps = await this.personalitySessionRepo.findOne({
+        where: { testSessionId, energyCenter: center },
+      });
+
+      if (!ps) {
+        ps = await this.personalitySessionRepo.save({
+          testSessionId,
+          energyCenter: center,
+        });
+      }
+      created.push(ps);
+    }
+
+    return {
+      started: true,
+      centers: created.map((c) => c.energyCenter),
+    };
+  }
+
+  /* -----------------------------------------
+     GET OR CREATE SESSION
   ------------------------------------------*/
   async getOrCreatePersonalitySession(
     testSessionId: string,
-    energyCenter: 'GUT' | 'HEART' | 'HEAD',
-  ) {
+    energyCenter: EnergyCenter,
+  ): Promise<PersonalitySession> {
     let ps = await this.personalitySessionRepo.findOne({
       where: { testSessionId, energyCenter },
     });
@@ -76,134 +184,47 @@ export class PersonalityService {
         energyCenter,
       });
     }
-
     return ps;
   }
 
   /* -----------------------------------------
      GET NEXT QUESTION
   ------------------------------------------*/
-
-  private energyCenterToId(center: 'GUT' | 'HEART' | 'HEAD'): number {
-    switch (center) {
-      case 'GUT':
-        return 1;
-      case 'HEART':
-        return 2;
-      case 'HEAD':
-        return 3;
-    }
-  }
-
-  // async getNextQuestion(
-  //   testSessionId: string,
-  //   energyCenter: 'GUT' | 'HEART' | 'HEAD',
-  // ) {
-  //   // const ps = await this.getOrCreatePersonalitySession(
-  //   //   testSessionId,
-  //   //   energyCenter,
-  //   // );
-
-  //   const ps = await this.personalitySessionRepo.findOne({
-  //     where: { testSessionId, energyCenter },
-  //   });
-
-  //   if (!ps) {
-  //     throw new Error('Personality session not started. Call /start first.');
-  //   }
-
-  //   // Prevent asking questions after completion
-  //   if (ps.completedAt) {
-  //     return null;
-  //   }
-  //   const energyCenterId = this.energyCenterToId(energyCenter);
-
-  //   const energyCenterMap = {
-  //     GUT: 1,
-  //     HEART: 2,
-  //     HEAD: 3,
-  //   };
-
-  //   const stage = await this.stageRepo.findOne({
-  //     where: {
-  //       assessmentId: 1,
-  //       energyCenterId: energyCenterMap[energyCenter],
-  //     },
-  //   });
-
-  //   if (!stage) {
-  //     throw new Error(`Assessment stage not found for ${energyCenter}`);
-  //   }
-
-  //   const answered = await this.responseRepo.find({
-  //     where: { personalitySessionId: ps.id },
-  //   });
-
-  //   const answeredIds = answered.map((r) => r.questionId);
-
-  //   const question = await this.questionRepo
-  //     .createQueryBuilder('q')
-  //     .where('q.energy_center= :center', { center: energyCenter })
-  //     .andWhere(answeredIds.length ? 'q.id NOT IN (:...ids)' : '1=1', {
-  //       ids: answeredIds,
-  //     })
-  //     .orderBy('q.question_order', 'ASC')
-  //     .getOne();
-
-  //   if (!question) {
-  //     return null;
-  //   }
-
-  //   const options = await this.rankRepo.find({
-  //     order: { score: 'ASC' }, // 1→5 natural flow
-  //   });
-
-  //   return { question, options };
-  // }
-
-  /***************************************************
-   *
-   *
-   *
-   * getNextQuestion
-   *
-   *
-   ****************************************************/
-
-  async getNextQuestion(
-    testSessionId: string,
-    energyCenter: 'GUT' | 'HEART' | 'HEAD',
-  ) {
+  async getNextQuestion(testSessionId: string, energyCenter: EnergyCenter) {
     const ps = await this.getOrCreatePersonalitySession(
       testSessionId,
       energyCenter,
     );
 
-    // find answered questions
     const answered = await this.responseRepo.find({
       where: { personalitySessionId: ps.id },
     });
 
     const answeredIds = answered.map((r) => r.questionId);
 
-    // fetch next question
-    const question = await this.questionRepo
+    const qb = this.questionRepo
       .createQueryBuilder('q')
       .where('q.energy_center = :center', { center: energyCenter })
-      .andWhere(answeredIds.length ? 'q.id NOT IN (:...ids)' : '1=1', {
-        ids: answeredIds,
-      })
-      .orderBy('q.question_order', 'ASC')
-      .getOne();
+      .orderBy('q.question_order', 'ASC');
 
-    if (!question) return null;
+    if (answeredIds.length) {
+      qb.andWhere('q.id NOT IN (:...ids)', { ids: answeredIds });
+    }
 
-    // fetch rank choices (Likert 1–5)
-    const options = await this.answerRepo.find({
-      where: { questionId: question.id },
-      order: { score: 'ASC' }, // 1 → 5 natural flow
+    const question = await qb.getOne();
+
+    if (!question) {
+      return {
+        completed: true,
+        stage: 'PERSONALITY',
+        energyCenter,
+        message: 'Personality assessment completed',
+      };
+    }
+
+    const options = await this.rankRepo.find({
+      order: { score: 'ASC' },
     });
-
     return { question, options };
   }
 
@@ -212,7 +233,7 @@ export class PersonalityService {
   ------------------------------------------*/
   async submitAnswer(
     testSessionId: string,
-    energyCenter: 'GUT' | 'HEART' | 'HEAD',
+    energyCenter: EnergyCenter,
     questionId: number,
     rankChoiceId: number,
   ) {
@@ -221,16 +242,19 @@ export class PersonalityService {
       energyCenter,
     );
 
-    // prevent duplicate answers
+    if (ps.completedAt) {
+      return {
+        completed: true,
+        message: 'Personality assessment already completed',
+      };
+    }
+
     const existing = await this.responseRepo.findOne({
-      where: {
-        personalitySessionId: ps.id,
-        questionId,
-      },
+      where: { personalitySessionId: ps.id, questionId },
     });
 
     if (existing) {
-      throw new Error('Question already answered');
+      throw new BadRequestException('Question already answered');
     }
 
     await this.responseRepo.save({
@@ -242,13 +266,21 @@ export class PersonalityService {
     const count = await this.responseRepo.count({
       where: { personalitySessionId: ps.id },
     });
-
-    if (count === 45) {
-      return this.calculateResult(ps.id);
+    const totalQuestions = await this.questionRepo.count({
+      where: {
+        energyCenter,
+      },
+    });
+    if (count >= totalQuestions) {
+      await this.calculateResult(ps.id);
+      return {
+        completed: true,
+        message: 'Personality assessment completed',
+      };
     }
-
     return { answered: count };
   }
+
   /* -----------------------------------------
      CALCULATE RESULT
   ------------------------------------------*/
@@ -258,10 +290,10 @@ export class PersonalityService {
     });
 
     if (!session || session.completedAt) {
-      throw new Error('Personality session already completed or not found');
+      throw new BadRequestException('Session already completed or not found');
     }
 
-    const rows = await this.responseRepo
+    const rows: ScoreRow[] = await this.responseRepo
       .createQueryBuilder('r')
       .innerJoin('personality_rank_choices', 'rc', 'rc.id = r.rank_choice_id')
       .innerJoin('personality_questions', 'q', 'q.id = r.question_id')
@@ -269,18 +301,15 @@ export class PersonalityService {
         'q.personality_type_id AS personalitytypeid',
         'SUM(rc.score) AS totalscore',
       ])
-      .where('r.personality_session_id = :id', { id: personalitySessionId })
+      .where('r.personality_session_id = :id', {
+        id: personalitySessionId,
+      })
       .groupBy('q.personality_type_id')
       .orderBy('totalscore', 'DESC')
       .getRawMany();
 
-    if (!rows.length) {
-      throw new Error('No responses found');
-    }
+    if (!rows.length) throw new BadRequestException('No responses found');
 
-    console.log('Scoring rows:', rows);
-
-    // persist breakdown
     await this.breakdownRepo.save(
       rows.map((r) => ({
         personalitySessionId,
@@ -289,12 +318,10 @@ export class PersonalityService {
       })),
     );
 
-    // mark session completed
     await this.personalitySessionRepo.update(personalitySessionId, {
       completedAt: new Date(),
     });
 
-    // find dominant (allow dual)
     const topScore = Number(rows[0].totalscore);
 
     const dominant = rows
@@ -304,133 +331,45 @@ export class PersonalityService {
 
     return {
       dominantPersonalityTypeIds: dominant,
-      breakdown: rows.map((r) => ({
-        personalityTypeId: Number(r.personalitytypeid),
-        score: Number(r.totalscore),
-      })),
     };
   }
 
   /* -----------------------------------------
-   GET NEXT ENERGY CENTER (ORCHESTRATOR)
-------------------------------------------*/
+     NEXT ENERGY CENTER
+  ------------------------------------------*/
   async getNextEnergyCenter(testSessionId: string) {
-    // 1️⃣ Read eligible centers from Stage 1
-    const eligibleRows = await this.testSessionRepo.manager.query(
+    const rows: EnergyCenterRow[] = await this.testSessionRepo.manager.query(
       `
-    SELECT energy_center
-    FROM energy_result_eligible_centers
-    WHERE session_id = $1
-  `,
+        SELECT energy_center
+        FROM energy_result_eligible_centers
+        WHERE session_id = $1
+      `,
       [testSessionId],
     );
 
-    if (!eligibleRows.length) {
-      throw new Error('No eligible centers found — run Stage 1 first');
-    }
+    const eligibleCenters = rows.map((r) => r.energy_center);
 
-    const eligibleCenters: string[] = eligibleRows.map(
-      (r: any) => r.energy_center,
-    );
-
-    // 2️⃣ Find personality sessions already completed
     const sessions = await this.personalitySessionRepo.find({
       where: { testSessionId },
     });
 
     const completedCenters = sessions
-      .filter((s) => s.completedAt !== null)
+      .filter((s) => s.completedAt)
       .map((s) => s.energyCenter);
 
-    // 3️⃣ Determine next unfinished center
     const nextCenter = eligibleCenters.find(
       (c) => !completedCenters.includes(c),
     );
 
-    // 4️⃣ If none → assessment complete
-    if (!nextCenter) {
-      return {
-        completed: true,
-        message: 'All personality assessments completed',
-      };
-    }
+    if (!nextCenter) return { completed: true };
 
-    return {
-      completed: false,
-      next: nextCenter,
-    };
-  }
-
-  async getStatus(sessionId: string) {
-    const sessions = await this.personalitySessionRepo.find({
-      where: { testSessionId: sessionId },
-    });
-
-    const totalEligible = sessions.length;
-
-    const completed = sessions.filter((s) => s.completedAt).length;
-
-    return {
-      totalEligible,
-      completed,
-      remaining: totalEligible - completed,
-      isFullyCompleted: totalEligible > 0 && completed === totalEligible,
-    };
+    return { completed: false, next: nextCenter };
   }
 
   /* -----------------------------------------
-   START PERSONALITY ASSESSMENT (STRICT FLOW)
-------------------------------------------*/
-  async startPersonality(testSessionId: string) {
-    const access = await this.canAccessStage2(testSessionId);
-
-    if (!access.allowed) {
-      throw new Error(access.reason);
-    }
-
-    // find eligible centers from stage1 result
-    const eligibleCenters = await this.breakdownRepo.manager.query(
-      `
-    SELECT energy_center
-    FROM energy_result_eligible_centers
-    WHERE session_id = $1
-  `,
-      [testSessionId],
-    );
-
-    if (!eligibleCenters.length) {
-      throw new Error('No eligible centers found');
-    }
-
-    const created: PersonalitySession[] = [];
-
-    for (const row of eligibleCenters) {
-      const center = row.energy_center;
-
-      let existing = await this.personalitySessionRepo.findOne({
-        where: { testSessionId, energyCenter: center },
-      });
-
-      if (!existing) {
-        existing = await this.personalitySessionRepo.save({
-          testSessionId,
-          energyCenter: center,
-        });
-      }
-
-      created.push(existing);
-    }
-
-    return {
-      started: true,
-      centers: created.map((c) => c.energyCenter),
-    };
-  }
-
-  /*********************Final Aggregation Results**********************/
-
+     FINAL RESULT - legacy debug admin/test only endpoint - can be removed later
+  ------------------------------------------*/
   async aggregateFinalPersonality(testSessionId: string) {
-    // 1️⃣ get completed personality sessions
     const sessions = await this.personalitySessionRepo.find({
       where: {
         testSessionId,
@@ -444,8 +383,7 @@ export class PersonalityService {
 
     const sessionIds = sessions.map((s) => s.id);
 
-    // 2️⃣ merge all breakdown scores across centers
-    const rows = await this.breakdownRepo
+    const rows: ScoreRow[] = await this.breakdownRepo
       .createQueryBuilder('b')
       .select([
         'b.personality_type_id AS personalitytypeid',
@@ -458,38 +396,168 @@ export class PersonalityService {
       .orderBy('totalscore', 'DESC')
       .getRawMany();
 
-    if (!rows.length) {
-      throw new Error('No breakdown scores found');
-    }
-
-    // normalize result
     const results = rows.map((r) => ({
       personalityTypeId: Number(r.personalitytypeid),
       totalScore: Number(r.totalscore),
     }));
 
-    // 3️⃣ determine highest score
     const topScore = Math.max(...results.map((r) => r.totalScore));
 
-    // 4️⃣ delete old final results (if re-run)
     await this.finalResultRepo.delete({ testSessionId });
 
-    // 5️⃣ persist ALL personality scores
-    const records = results.map((r) => ({
-      testSessionId,
-      personalityTypeId: r.personalityTypeId,
-      totalScore: r.totalScore,
-      isDominant: r.totalScore === topScore,
-    }));
+    await this.finalResultRepo.save(
+      results.map((r) => ({
+        testSessionId,
+        personalityTypeId: r.personalityTypeId,
+        totalScore: r.totalScore,
+        isDominant: r.totalScore === topScore,
+      })),
+    );
 
-    await this.finalResultRepo.save(records);
+    // ✅ mark full completion
+    await this.testSessionRepo.update(testSessionId, {
+      completedAt: new Date(),
+    });
 
+    return results;
+  }
+
+  /***********************
+Final Report Generation and Retrieval
+ ***********************/
+  async getFinalReport(
+    testSessionId: string,
+    userId: number,
+    role: string,
+  ): Promise<FinalReportDto> {
+    await this.validateOwnership(testSessionId, userId, role);
+
+    const results = await this.finalResultRepo.find({
+      where: { testSessionId },
+      order: {
+        totalScore: 'DESC',
+      },
+    });
+
+    if (!results.length) {
+      throw new Error('No final results found');
+    }
+    const topScore = results[0].totalScore;
+    const dominantResults = results.filter((r) => r.totalScore === topScore);
+    const runnerUpResult = results.find((r) => r.totalScore < topScore);
+
+    const confidence = this.calculateConfidence(
+      dominantResults.length,
+      topScore,
+      runnerUpResult?.totalScore ?? topScore,
+    );
+
+    const dominantTypes: DominantTypeReportDto[] = [];
+    let runnerUp: RunnerUpTypeReportDto | null = null;
+
+    //runner up results
+    if (runnerUpResult) {
+      const type = await this.personalityTypeRepo.findOneBy({
+        id: runnerUpResult.personalityTypeId,
+      });
+
+      const description = await this.personalityTypeDescriptionRepo.findOneBy({
+        personalityTypeId: runnerUpResult.personalityTypeId,
+      });
+
+      runnerUp = {
+        personalityTypeId: runnerUpResult.personalityTypeId,
+        code: type?.code,
+        name: type?.name,
+        title: description?.title,
+        score: runnerUpResult.totalScore,
+      };
+    }
+
+    //Dominant results
+    for (const result of dominantResults) {
+      const type = await this.personalityTypeRepo.findOne({
+        where: {
+          id: result.personalityTypeId,
+        },
+      });
+
+      const description = await this.personalityTypeDescriptionRepo.findOne({
+        where: {
+          personalityTypeId: result.personalityTypeId,
+        },
+      });
+      const dto: DominantTypeReportDto = {
+        personalityTypeId: result.personalityTypeId,
+        code: type?.code,
+        name: type?.name,
+        title: description?.title,
+        score: result.totalScore,
+        overview: description?.overview ?? '',
+        strengths: description?.strengths ?? '',
+        weaknesses: description?.weaknesses ?? '',
+        growthPath: description?.growthPath ?? '',
+      };
+
+      dominantTypes.push(dto);
+    }
     return {
-      dominantPersonalityTypeIds: records
-        .filter((r) => r.isDominant)
-        .map((r) => r.personalityTypeId),
-
-      breakdown: records,
+      sessionId: testSessionId,
+      dominantTypes,
+      runnerUp,
+      confidence,
     };
+  }
+
+  //Calculate confidence level based on score gap and number of dominant types
+  private calculateConfidence(
+    dominantCount: number,
+    topScore: number,
+    runnerUpScore: number,
+  ) {
+    // tie for first place
+    if (dominantCount > 1) {
+      return {
+        score: 0,
+        level: 'LOW',
+        reason: 'MULTIPLE_DOMINANT_TYPES',
+      };
+    }
+
+    const gap = topScore - runnerUpScore;
+    let level = 'LOW';
+
+    if (gap > 5) {
+      level = 'HIGH';
+    } else if (gap > 0) {
+      level = 'MEDIUM';
+    }
+    return {
+      score: gap,
+      level,
+    };
+  }
+  //Helper method to validate session ownership and access rights
+  private async validateOwnership(
+    sessionId: string,
+    userId: number,
+    role: string,
+  ) {
+    const session = await this.testSessionRepo.findOne({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    if (role === 'ADMIN') {
+      return session;
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this session');
+    }
+    return session;
   }
 }

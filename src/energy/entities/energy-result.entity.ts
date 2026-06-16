@@ -3,16 +3,16 @@ import { Entity, Column, PrimaryColumn, CreateDateColumn } from 'typeorm';
 @Entity({ name: 'energy_results' })
 export class EnergyResult {
   @PrimaryColumn({ name: 'session_id', type: 'uuid' })
-  sessionId: string;
+  sessionId!: string;
 
   @Column({ name: 'gut_score', type: 'int' })
-  gutScore: number;
+  gutScore!: number;
 
   @Column({ name: 'heart_score' })
-  heartScore: number;
+  heartScore!: number;
 
   @Column({ name: 'head_score', type: 'int' })
-  headScore: number;
+  headScore!: number;
 
   @Column({
     name: 'dominant_center',
@@ -27,5 +27,5 @@ export class EnergyResult {
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
   })
-  calculatedAt: Date;
+  calculatedAt!: Date;
 }

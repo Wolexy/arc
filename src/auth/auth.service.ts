@@ -125,7 +125,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('Invalid verification token');
+      throw new UnauthorizedException('Invalid verification token');
     }
 
     user.emailVerified = true;

@@ -3,13 +3,13 @@ import { Match } from '../../common/decorators/match.decorator';
 
 export class RegisterDto {
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsString()
   @MinLength(6)
-  password: string;
+  password!: string;
 
   @IsString()
   @Match('password')
-  confirmPassword: string;
+  confirmPassword!: string;
 }

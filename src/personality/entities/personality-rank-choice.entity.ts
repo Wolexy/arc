@@ -3,11 +3,11 @@ import { Entity, Column, PrimaryColumn } from 'typeorm';
 @Entity('personality_rank_choices')
 export class PersonalityRankChoice {
   @PrimaryColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  label: string;
+  label!: string;
 
   @Column()
-  score: number;
+  score!: number;
 }

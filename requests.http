@@ -1,98 +1,252 @@
-### List all sessions
-GET http://localhost:3000/
+### ==================================================
+### ARC API TEST SUITE
+### ==================================================
 
+@baseUrl = http://localhost:3000
 
-### 1 - Create a new session
-POST http://localhost:3000/sessions/start
+@userToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjMsImVtYWlsIjoid29ya2Zsb3dAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTUzMjY4NSwiZXhwIjoxNzgxNjE5MDg1fQ.CNVkhCkvvr430m5qMTMrYZ4y9X-6t3o4btZTLaH7tpU
+
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AYXJjLmNvbSIsInJvbGUiOiJBRE1JTiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTU1MTQ0MSwiZXhwIjoxNzgxNjM3ODQxfQ.10efCW2vQ9bVDV1GvQx_KqETK4-rPTAmr30Egdguzb0
+
+@intruderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjQsImVtYWlsIjoiaW50cnVkZXJAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTU1MzY0OSwiZXhwIjoxNzgxNjQwMDQ5fQ.p1vPukjecltXxY4lE8MI70Q750olx3ukt4q1i_nqq_g
+
+@sessionId = a56535c3-5607-4f13-877b-49ed0f39125a
+
+######################################################
+# AUTHENTICATION
+######################################################
+
+### Register User
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-  "email": "test@test.com"
-}
-
-
-### 2a - Get session details
-GET http://localhost:3000/energy/next/11e653aa-4c30-4eac-9f5b-e1b5274f01da
-
-
-
-### 2b - Submit energy rankings
-POST http://localhost:3000/energy/submit
-Content-Type: application/json
-
-{
-  "sessionId": "11e653aa-4c30-4eac-9f5b-e1b5274f01da",
-  "energyStatementGroupId": 10,
-  "rankings": [
-    { "statementId": 28, "rankId": 3},
-    { "statementId": 29, "rankId": 1},
-    { "statementId": 30, "rankId": 2}
-  ]
-}
-
-### 3 - Finish stage 1 of the session
-POST http://localhost:3000/energy/finish/11e653aa-4c30-4eac-9f5b-e1b5274f01da
-
-
-### 4 - Get Personality Test Access
-GET http://localhost:3000/personality/access/11e653aa-4c30-4eac-9f5b-e1b5274f01da
-
-
-### 5 - Post Personality - start session - call on after 4 - get access returns true
-POST http://localhost:3000/personality/start/11e653aa-4c30-4eac-9f5b-e1b5274f01da
-
-
-### Get Personality Session Status
-GET http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/status
-
-
-//**************************************************
-//  Personality Test
-//
-//**************************************************
-### 6a - Get next Personality question
-GET http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/HEAD/next
-
-
-### 6b Submit Personality answer
-POST http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/HEAD/answer
-Content-Type: application/json
-
-{
-  "questionId": 90,
-  "rankChoiceId": 2
-} 
-
-
-### 7 - get next energy center to determine personality type to run in 6a and 6b
-GET http://localhost:3000/personality/next-center/11e653aa-4c30-4eac-9f5b-e1b5274f01da
-
-
-### 8 - Get final personality result
-GET http://localhost:3000/personality/11e653aa-4c30-4eac-9f5b-e1b5274f01da/final
-
-
-### Register a new user
-POST http://localhost:3000/auth/register
-Content-Type: application/json
-
-{
-  "email": "test@test.com",
+  "email": "workflow@test.com",
   "password": "password123",
   "confirmPassword": "password123"
 }
 
-### Login
-POST http://localhost:3000/auth/login
+### Register Intruder User
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-  "email": "test@test.com",
+  "email": "intruder@test.com",
+  "password": "password123",
+  "confirmPassword": "password123"
+}
+
+### Verify Email
+### Replace token with actual token
+GET {{baseUrl}}/auth/verify-email?token=7b4c69c96548337f58191cc41ba02adf915aad218e29456b06addd57e97aa611
+
+
+### Login User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "workflow@test.com",
   "password": "password123"
 }
 
-### Get Session Endpoing
-GET http://localhost:3000/sessions/progress/
+### Login Intruder User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
 
-### Get User Details
-GET http://localhost:3000/users/me
+{
+  "email": "intruder@test.com",
+  "password": "password123"
+}
+
+######################################################
+# USER PROFILE
+######################################################
+
+### Get Current User
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{userToken}}
+
+
+######################################################
+# SESSION MANAGEMENT
+######################################################
+
+### Create Assessment Session
+POST {{baseUrl}}/sessions/start
+Authorization: Bearer {{userToken}}
+
+
+### Get Active Session
+GET {{baseUrl}}/sessions/active
+Authorization: Bearer {{userToken}}
+
+
+### Get Session Progress
+GET {{baseUrl}}/sessions/progress/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{adminToken}}
+
+
+######################################################
+# ENERGY ASSESSMENT (STAGE 1)
+######################################################
+
+### Get Next Energy Group
+GET {{baseUrl}}/energy/next/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{userToken}}
+
+
+### Submit Energy Rankings
+POST {{baseUrl}}/energy/submit
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "sessionId": "a56535c3-5607-4f13-877b-49ed0f39125a",
+  "energyStatementGroupId": 10,
+  "rankings": [
+    {
+      "statementId": 1,
+      "rankId": 2
+    },
+    {
+      "statementId": 2,
+      "rankId": 1
+    },
+    {
+      "statementId": 3,
+      "rankId": 3
+    }
+  ]
+}
+
+### Determine Next Eligible Energy Center
+GET {{baseUrl}}/energy/next/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{userToken}}
+
+
+### Finish Energy Assessment
+POST {{baseUrl}}/energy/finish/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{userToken}}
+
+
+######################################################
+# ADMIN ACCESS CONTROL
+######################################################
+
+### Login As Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@arc.com",
+  "password": "pass123"
+}
+
+
+### List Users
+GET {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+
+
+### Grant Access To User
+POST {{baseUrl}}/admin/grant/4
+Authorization: Bearer {{adminToken}}
+
+
+### Revoke Access From User
+POST {{baseUrl}}/admin/revoke/2
+Authorization: Bearer {{adminToken}}
+
+
+######################################################
+# PERSONALITY ACCESS
+######################################################
+
+### Check Personality Access
+GET {{baseUrl}}/personality/access/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{userToken}}
+
+
+### Start Personality Assessment
+POST {{baseUrl}}/personality/start/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{userToken}}
+
+
+### Determine Next Eligible Energy Center
+GET {{baseUrl}}/personality/next-center/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{userToken}}
+
+
+######################################################
+# PERSONALITY QUESTIONS
+######################################################
+
+### Get Next GUT Question - GUT
+GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/GUT/next
+Authorization: Bearer {{userToken}}
+
+### Submit Personality GUT Answer
+POST {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/GUT/answer
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "questionId": 45,
+  "rankChoiceId": 3
+}
+
+### Get Next HEART Question - HEART
+GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/HEART/next
+Authorization: Bearer {{userToken}}
+
+### Submit HEART Personality Answer
+POST {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/HEART/answer
+Authorization: Bearer {{userToken}}
+
+Content-Type: application/json
+
+{
+  "questionId": 1,
+  "rankChoiceId": 5
+}
+
+
+### Get Next HEAD Question - HEAD
+GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/HEAD/next
+Authorization: Bearer {{userToken}}
+
+
+### Submit HEAD Personality Answer
+POST {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/HEAD/answer
+Authorization: Bearer {{userToken}}
+
+Content-Type: application/json
+
+{
+  "questionId": 1,
+  "rankChoiceId": 5
+}
+
+
+######################################################
+# FINAL RESULTS
+######################################################
+
+### Get Final Personality Result
+GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/final
+Authorization: Bearer {{userToken}}
+
+
+### Get Final Personality Report access by owner
+GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/report
+Authorization: Bearer {{userToken}}
+
+
+### Get Final Personality Report access by admin
+GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/report
+Authorization: Bearer {{adminToken}}
+
+### Get Final Personality Report access by admin
+GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/report
+Authorization: Bearer {{intruderToken}}

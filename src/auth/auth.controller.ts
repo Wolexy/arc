@@ -1,4 +1,3 @@
-
 import {
   Controller,
   Post,
@@ -9,14 +8,13 @@ import {
   Req,
 } from '@nestjs/common';
 
-
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import type { Request } from 'express'
+import type { Request } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) { }
+  constructor(private auth: AuthService) {}
 
   /* ---------------------------
      REGISTER ENDPOINT
@@ -42,12 +40,13 @@ export class AuthController {
     body: {
       email: string;
       password: string;
-    }, @Req() req: Request
+    },
+    @Req() req: Request,
   ) {
     const ip = req.ip || 'unknown';
     // use this when using proxy server like nginx /cloud
     //const ip = req.headers['x-forwarded-for'] || req.ip;
-    const userAgent = req.headers['user-agent'] || 'unknown'
+    const userAgent = req.headers['user-agent'] || 'unknown';
     return this.auth.login(body.email, body.password, ip, userAgent);
   }
 

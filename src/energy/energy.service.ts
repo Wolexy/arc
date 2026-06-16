@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EnergyStatementGroup } from './entities/energy-statement-group.entity';
@@ -9,10 +9,11 @@ import { EnergyResult } from './entities/energy-result.entity';
 import { EnergyResultEligibleCenter } from './entities/energy-result-eligible.entity';
 import { TestSession } from 'src/sessions/entities/test-session.entity';
 import { EnergyScoreRow } from '../energy/dto/energy-score-row.dto';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class EnergyService {
-  private totalGroups: number;
+  private totalGroups!: number;
   constructor(
     @InjectRepository(EnergyStatementGroup)
     private groupRepo: Repository<EnergyStatementGroup>,
@@ -34,6 +35,9 @@ export class EnergyService {
 
     @InjectRepository(TestSession)
     private sessionRepo: Repository<TestSession>,
+
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) {
     this.groupRepo
       .count()
@@ -64,7 +68,11 @@ export class EnergyService {
       .getOne();
 
     if (!nextGroup) {
-      return null; // Stage 1 complete
+      return {
+        completed: true,
+        stage: 'ENERGY',
+        message: 'Energy assessment completed',
+      }; // Stage 1 complete
     }
 
     // may fetch totalGroups instead of from constructor
@@ -90,14 +98,18 @@ export class EnergyService {
     rankings: { statementId: number; rankId: number }[],
   ) {
     // 1. Validate exactly 3 rankings
-    if (rankings.length !== 3) {
+    const statements = await this.statementRepo.count({
+      where: { groupId: energyStatementGroupId },
+    });
+
+    if (rankings.length !== statements) {
       throw new Error('Exactly 3 rankings required');
     }
 
     // 2. Validate unique ranks
     const rankIds = rankings.map((r) => r.rankId);
-    if (new Set(rankIds).size !== 3) {
-      throw new Error('Ranks must be unique');
+    if (new Set(rankIds).size !== statements) {
+      throw new ConflictException('Ranks must be unique');
     }
 
     // 3. Prevent duplicate submission
@@ -109,7 +121,7 @@ export class EnergyService {
     });
 
     if (existing) {
-      throw new Error('Group already submitted');
+      throw new BadRequestException('This group has already been submitted');
     }
 
     // 4. Create group response
@@ -134,14 +146,20 @@ export class EnergyService {
 
   async finishStage1(sessionId: string) {
     /* -----------------------------------------
-     1️⃣ Ensure all 10 groups completed
+     1️⃣ Ensure all groups completed
   ------------------------------------------ */
+    const totalGroups = await this.groupRepo.count({
+      where: {
+        stageId: 1,
+      },
+    });
+
     const completedGroups = await this.responseRepo.count({
       where: { sessionId },
     });
 
-    if (completedGroups < 10) {
-      throw new Error('Stage 1 not complete');
+    if (completedGroups < totalGroups) {
+      throw new BadRequestException('Energy assessment is not yet complete');
     }
 
     /* -----------------------------------------
@@ -254,6 +272,53 @@ export class EnergyService {
       head,
       dominant,
       eligibleCenters,
+    };
+  }
+  /*-----------------Unlocked Stage 2 --------------------------
+  unlock Stage 2 by setting stage2UnlockedAt timestamp. 
+This allows frontend to know when to allow access to Stage 2, 
+without needing to check energy results or eligible centers separately. 
+*/
+  async unlockStage2(sessionId: string) {
+    const session: TestSession | null = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    /* -----------------------------------------
+     DEV BYPASS CHECK
+  ------------------------------------------*/
+    const bypass = process.env.DEV_BYPASS_PAYMENT === 'true';
+    console.log('DEV_BYPASS_PAYMENT:', process.env.DEV_BYPASS_PAYMENT);
+
+    if (!bypass) {
+      // 🔒 future real payment validation
+      throw new Error('PAYMENT_REQUIRED');
+    }
+
+    console.log('🧪 DEV MODE: bypassing payment');
+
+    /* -----------------------------------------
+     UNLOCK STAGE 2
+  ------------------------------------------*/
+    session.stage2UnlockedAt = new Date();
+    await this.sessionRepo.save(session);
+
+    /* -----------------------------------------
+     GRANT USER ACCESS
+  ------------------------------------------*/
+    if (session.userId) {
+      await this.userRepo.update(session.userId, {
+        accessGranted: true,
+      });
+    }
+
+    return {
+      unlocked: true,
+      stage2UnlockedAt: session.stage2UnlockedAt,
     };
   }
 }

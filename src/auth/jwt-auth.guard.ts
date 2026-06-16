@@ -9,7 +9,7 @@ import { Request } from 'express';
 
 interface AuthRequest extends Request {
   user: {
-    userId: string;
+    userId: number;
     email: string;
     role: string;
     accessGranted: boolean;

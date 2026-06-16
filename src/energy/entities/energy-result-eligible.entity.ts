@@ -8,14 +8,14 @@ import {
 @Entity({ name: 'energy_result_eligible_centers' })
 export class EnergyResultEligibleCenter {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ name: 'session_id' })
-  sessionId: string;
+  sessionId!: string;
 
   @Column({ name: 'energy_center' })
-  energyCenter: string; // GUT | HEART | HEAD
+  energyCenter!: string; // GUT | HEART | HEAD
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 }

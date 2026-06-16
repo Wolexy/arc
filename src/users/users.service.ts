@@ -57,22 +57,29 @@ export class UsersService {
     return user;
   }
 
+  // async getMe(userId: number) {
+  //   const user = await this.userRepo.findOne({
+  //     where: { id: userId },
+  //   });
+
+  //   if (!user) {
+  //     throw new Error('User not found');
+  //   }
+
+  //   return {
+  //     id: user.id,
+  //     email: user.email,
+  //     role: user.role,
+  //     accessGranted: user.accessGranted,
+  //   };
+  //}
   async getMe(userId: number) {
-    const user = await this.userRepo.findOne({
+    return this.userRepo.findOne({
       where: { id: userId },
+      select: ['id', 'email', 'role', 'accessGranted'],
     });
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      accessGranted: user.accessGranted,
-    };
   }
+
   /* --------------------------------------------------
        GRANT ACCESS TO STAGE 2 (PERSONALITY TEST)
        Used after payment or admin approval

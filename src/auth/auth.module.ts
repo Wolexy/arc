@@ -15,7 +15,6 @@ import { MailService } from './mail.service';
     JwtModule.register({
       secret: 'super-secret-key',
       signOptions: { expiresIn: '1d' },
-      
     }),
   ],
   providers: [AuthService, JwtStrategy, MailService],

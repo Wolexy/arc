@@ -10,7 +10,7 @@ export class UserLoginHistory {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({name: 'user_id'})
+  @Column({ name: 'user_id' })
   userId!: number;
 
   @Column({ name: 'ip_address', nullable: true })
@@ -19,6 +19,10 @@ export class UserLoginHistory {
   @Column({ name: 'user_agent', nullable: true })
   userAgent?: string;
 
-  @CreateDateColumn({name: 'login_at', type: 'timestamp', default: () => 'now()'})
+  @CreateDateColumn({
+    name: 'login_at',
+    type: 'timestamp',
+    default: () => 'now()',
+  })
   loginAt!: Date;
 }
