@@ -2,9 +2,9 @@
 ### ARC API TEST SUITE
 ### ==================================================
 
-@baseUrl = http://localhost:3000
+@baseUrl = http://localhost:4200
 
-@userToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjMsImVtYWlsIjoid29ya2Zsb3dAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTUzMjY4NSwiZXhwIjoxNzgxNjE5MDg1fQ.CNVkhCkvvr430m5qMTMrYZ4y9X-6t3o4btZTLaH7tpU
+@userToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjMsImVtYWlsIjoid29ya2Zsb3dAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTU4MTk1OCwiZXhwIjoxNzgxNjY4MzU4fQ.gBoitlOpPxWSdKRua7sAieOFaPMoL7nCQNuVSA3ETo4
 
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AYXJjLmNvbSIsInJvbGUiOiJBRE1JTiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTU1MTQ0MSwiZXhwIjoxNzgxNjM3ODQxfQ.10efCW2vQ9bVDV1GvQx_KqETK4-rPTAmr30Egdguzb0
 
@@ -250,3 +250,5 @@ Authorization: Bearer {{adminToken}}
 ### Get Final Personality Report access by admin
 GET {{baseUrl}}/personality/a56535c3-5607-4f13-877b-49ed0f39125a/report
 Authorization: Bearer {{intruderToken}}
+
+//workflow@test.com

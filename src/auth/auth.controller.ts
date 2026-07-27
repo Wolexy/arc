@@ -6,6 +6,8 @@ import {
   Get,
   Query,
   Req,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
@@ -35,6 +37,7 @@ export class AuthController {
      LOGIN ENDPOINT
   ----------------------------*/
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   login(
     @Body()
     body: {
