@@ -33,7 +33,7 @@ export class MailService {
 
       await this.transporter.sendMail(message);
 
-      console.log('Verification email sent to:', email);
+     // console.log('Verification email sent to:', email);
 
     } catch (err) {
 

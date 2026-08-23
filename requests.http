@@ -4,11 +4,11 @@
 
 @baseUrl = http://localhost:4200
 
-@userToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjMsImVtYWlsIjoid29ya2Zsb3dAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTU4MTk1OCwiZXhwIjoxNzgxNjY4MzU4fQ.gBoitlOpPxWSdKRua7sAieOFaPMoL7nCQNuVSA3ETo4
+@userToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjMsImVtYWlsIjoid29ya2Zsb3dAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4NzQzMTgyMCwiZXhwIjoxNzg3NTE4MjIwfQ.QQ4S7tfjHO_t-Q8WjcOrtOgIycd-Dh5wv0lyY4nPyoQ
 
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AYXJjLmNvbSIsInJvbGUiOiJBRE1JTiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTU1MTQ0MSwiZXhwIjoxNzgxNjM3ODQxfQ.10efCW2vQ9bVDV1GvQx_KqETK4-rPTAmr30Egdguzb0
 
-@intruderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjQsImVtYWlsIjoiaW50cnVkZXJAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4MTU1MzY0OSwiZXhwIjoxNzgxNjQwMDQ5fQ.p1vPukjecltXxY4lE8MI70Q750olx3ukt4q1i_nqq_g
+@intruderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjQsImVtYWlsIjoiaW50cnVkZXJAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImFjY2Vzc0dyYW50ZWQiOnRydWUsImlhdCI6MTc4NzQzMjExMywiZXhwIjoxNzg3NTE4NTEzfQ.5NmCy0zOBbeCO9l5Oq09ieW1yFNhjZ541iHo4b8bgoU
 
 @sessionId = a56535c3-5607-4f13-877b-49ed0f39125a
 
@@ -91,14 +91,18 @@ Authorization: Bearer {{adminToken}}
 # ENERGY ASSESSMENT (STAGE 1)
 ######################################################
 
-### Get Next Energy Group
+### Get Next Energy Group for User
 GET {{baseUrl}}/energy/next/a56535c3-5607-4f13-877b-49ed0f39125a
 Authorization: Bearer {{userToken}}
+
+### Get Next Energy Group for intruder
+GET {{baseUrl}}/energy/next/a56535c3-5607-4f13-877b-49ed0f39125a
+Authorization: Bearer {{intruderToken}}
 
 
 ### Submit Energy Rankings
 POST {{baseUrl}}/energy/submit
-Authorization: Bearer {{userToken}}
+Authorization: Bearer {{intruderToken}}
 Content-Type: application/json
 
 {
@@ -140,7 +144,7 @@ Content-Type: application/json
 
 {
   "email": "admin@arc.com",
-  "password": "pass123"
+  "password": "password123"
 }
 
 

@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RoleGuard } from '../common/guards/role.guard';
 
 import { Roles } from '../common/decorators/roles.decorator';
+import type { AuthRequest } from 'src/auth/interface/auth-request.interface';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RoleGuard)
@@ -20,7 +21,7 @@ export class AdminController {
   }
 
   @Post('grant/:userId')
-  grantAccess(@Param('userId') userId: string, @Req() req) {
+  grantAccess(@Param('userId') userId: string, @Req() req : AuthRequest) {
     return this.adminService.grantAccess(Number(userId), req.user.userId);
   }
 

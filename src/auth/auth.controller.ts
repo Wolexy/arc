@@ -1,3 +1,5 @@
+import { LoginDto } from './dto/login.dto';
+import { Throttle } from '@nestjs/throttler';
 import {
   Controller,
   Post,
@@ -21,6 +23,7 @@ export class AuthController {
   /* ---------------------------
      REGISTER ENDPOINT
   ----------------------------*/
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   register(
     @Body()
@@ -36,21 +39,15 @@ export class AuthController {
   /* ---------------------------
      LOGIN ENDPOINT
   ----------------------------*/
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(
-    @Body()
-    body: {
-      email: string;
-      password: string;
-    },
-    @Req() req: Request,
-  ) {
+  login(@Body() dto: LoginDto, @Req() req: Request) {
     const ip = req.ip || 'unknown';
     // use this when using proxy server like nginx /cloud
     //const ip = req.headers['x-forwarded-for'] || req.ip;
     const userAgent = req.headers['user-agent'] || 'unknown';
-    return this.auth.login(body.email, body.password, ip, userAgent);
+    return this.auth.login(dto.email, dto.password, ip, userAgent);
   }
 
   /* ---------------------------

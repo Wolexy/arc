@@ -1,4 +1,13 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EnergyStatementGroup } from './entities/energy-statement-group.entity';
@@ -10,9 +19,10 @@ import { EnergyResultEligibleCenter } from './entities/energy-result-eligible.en
 import { TestSession } from 'src/sessions/entities/test-session.entity';
 import { EnergyScoreRow } from '../energy/dto/energy-score-row.dto';
 import { User } from 'src/users/entities/user.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class EnergyService {
+export class EnergyService implements OnModuleInit {
   private totalGroups!: number;
   constructor(
     @InjectRepository(EnergyStatementGroup)
@@ -38,18 +48,43 @@ export class EnergyService {
 
     @InjectRepository(User)
     private userRepo: Repository<User>,
-  ) {
-    this.groupRepo
-      .count()
-      .then((count) => {
-        this.totalGroups = count;
-      })
-      .catch((err) => {
-        console.error(err);
-      });
+
+    private readonly configService: ConfigService,
+  ) {}
+
+  async onModuleInit() {
+    this.totalGroups = await this.groupRepo.count({
+      where: { stageId: 1 },
+    });
   }
 
-  async getNextGroup(sessionId: string) {
+  /*=====================================================
+    Validate Session Ownership 
+========================================================*/
+
+  private async validateSessionOwnership(
+    sessionId: string,
+    userId: number,
+  ): Promise<TestSession> {
+    const session = await this.sessionRepo.findOne({
+      where: {
+        id: sessionId,
+        userId,
+      },
+    });
+    if (!session) {
+      throw new ForbiddenException(
+        'Assessment session not found or access denied.',
+      );
+    }
+    return session;
+  }
+
+  //==========================================================
+
+  async getNextGroup(sessionId: string, userId: number) {
+    await this.validateSessionOwnership(sessionId, userId);
+
     // 1. Find groups already answered
     const answered = await this.responseRepo.find({
       where: { sessionId },
@@ -94,16 +129,19 @@ export class EnergyService {
 
   async submitGroupRanking(
     sessionId: string,
+    userId: number,
     energyStatementGroupId: number,
     rankings: { statementId: number; rankId: number }[],
   ) {
+    await this.validateSessionOwnership(sessionId, userId);
+
     // 1. Validate exactly 3 rankings
     const statements = await this.statementRepo.count({
       where: { groupId: energyStatementGroupId },
     });
 
     if (rankings.length !== statements) {
-      throw new Error('Exactly 3 rankings required');
+      throw new BadRequestException(`Exactly ${statements} rankings required`);
     }
 
     // 2. Validate unique ranks
@@ -144,10 +182,12 @@ export class EnergyService {
 
   ///////////////////////////////////////@ts-check
 
-  async finishStage1(sessionId: string) {
+  async finishStage1(sessionId: string, userId: number) {
     /* -----------------------------------------
      1️⃣ Ensure all groups completed
   ------------------------------------------ */
+    await this.validateSessionOwnership(sessionId, userId);
+
     const totalGroups = await this.groupRepo.count({
       where: {
         stageId: 1,
@@ -279,27 +319,21 @@ export class EnergyService {
 This allows frontend to know when to allow access to Stage 2, 
 without needing to check energy results or eligible centers separately. 
 */
-  async unlockStage2(sessionId: string) {
-    const session: TestSession | null = await this.sessionRepo.findOne({
-      where: { id: sessionId },
-    });
-
-    if (!session) {
-      throw new Error('Session not found');
-    }
+  async unlockStage2(sessionId: string, userId: number) {
+    const session: TestSession | null = await this.validateSessionOwnership(
+      sessionId,
+      userId,
+    );
 
     /* -----------------------------------------
      DEV BYPASS CHECK
   ------------------------------------------*/
-    const bypass = process.env.DEV_BYPASS_PAYMENT === 'true';
-    console.log('DEV_BYPASS_PAYMENT:', process.env.DEV_BYPASS_PAYMENT);
+    const bypass = this.configService.get('DEV_BYPASS_PAYMENT') === 'true';
 
     if (!bypass) {
       // 🔒 future real payment validation
-      throw new Error('PAYMENT_REQUIRED');
+      throw new HttpException('Payment required', HttpStatus.PAYMENT_REQUIRED);
     }
-
-    console.log('🧪 DEV MODE: bypassing payment');
 
     /* -----------------------------------------
      UNLOCK STAGE 2

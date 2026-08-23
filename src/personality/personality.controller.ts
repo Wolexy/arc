@@ -24,7 +24,7 @@ export class PersonalityController {
 
   @Get('access/:sessionId')
   checkAccess(@Param('sessionId') sessionId: string) {
-    console.log('ACCESS ENDPOINT HIT');
+   // console.log('ACCESS ENDPOINT HIT');
     return this.personalityService.canAccessStage2(sessionId);
   }
 

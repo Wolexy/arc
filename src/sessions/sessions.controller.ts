@@ -21,7 +21,7 @@ export class SessionsController {
   async start(@Req() req: AuthRequest) {
     const userId = req.user.userId;
     //const userEmail = req.user.email;
-    console.log('🚀 START SESSION FOR USER:', userId);
+    //console.log('🚀 START SESSION FOR USER:', userId);
     return this.sessionsService.startUserSession(userId);
   }
 

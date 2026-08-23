@@ -1,3 +1,5 @@
+import { TokenUtil } from './../common/utils/token.util';
+import { ConfigService } from '@nestjs/config';
 import {
   Injectable,
   BadRequestException,
@@ -11,9 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { UserLoginHistory } from './entities/user-login-history.entity';
 import { JwtPayload } from './types/jwt-payload.type';
-import { randomBytes } from 'crypto';
 import { MailService } from './mail.service';
-//import { access } from 'fs';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +26,7 @@ export class AuthService {
     private jwtService: JwtService,
 
     private mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   /* ---------------------------
@@ -40,8 +41,16 @@ export class AuthService {
       throw new BadRequestException('Email already registered');
     }
 
-    const hash = await bcrypt.hash(password, 10);
-    const token = randomBytes(32).toString('hex');
+    const saltRounds = Number(
+      this.configService.getOrThrow('BCRYPT_SALT_ROUNDS'),
+    );
+    const token = TokenUtil.generate(); //randomBytes(32).toString('hex');
+
+    const hash = await bcrypt.hash(password, saltRounds);
+
+    const expiryHours = Number(
+      this.configService.getOrThrow<number>('EMAIL_VERIFICATION_EXPIRY_HOURS'),
+    );
 
     const user = this.userRepo.create({
       email: email,
@@ -52,7 +61,7 @@ export class AuthService {
 
       emailVerified: false,
       emailVerificationToken: token,
-      emailVerificationExpires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+      emailVerificationExpires: TokenUtil.expiresInHours(expiryHours),
     });
 
     await this.userRepo.save(user);
@@ -125,11 +134,21 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid verification token');
+      throw new BadRequestException('Invalid verification token');
+    }
+
+    if (
+      user.emailVerificationExpires &&
+      user.emailVerificationExpires < new Date()
+    ) {
+      throw new BadRequestException(
+        'Verification link has expired. Please request a new verification email.',
+      );
     }
 
     user.emailVerified = true;
     user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
 
     await this.userRepo.save(user);
 

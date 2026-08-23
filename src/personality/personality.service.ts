@@ -122,14 +122,8 @@ export class PersonalityService {
     if (!session.stage1CompletedAt)
       throw new UnauthorizedException('STAGE1_NOT_COMPLETED');
 
-    // auto unlock (DEV-friendly)
-    if (!session.stage2UnlockedAt) {
-      await this.testSessionRepo.update(testSessionId, {
-        stage2UnlockedAt: new Date(),
-      });
-    }
-
     const access = await this.canAccessStage2(testSessionId);
+    
     if (!access.allowed) throw new UnauthorizedException(access.reason);
 
     const rows: EnergyCenterRow[] = await this.testSessionRepo.manager.query(
@@ -378,7 +372,7 @@ export class PersonalityService {
     });
 
     if (!sessions.length) {
-      throw new Error('No completed personality assessments');
+      throw new NotFoundException('No completed personality assessments');
     }
 
     const sessionIds = sessions.map((s) => s.id);
@@ -440,7 +434,7 @@ Final Report Generation and Retrieval
     });
 
     if (!results.length) {
-      throw new Error('No final results found');
+      throw new NotFoundException('No final results found');
     }
     const topScore = results[0].totalScore;
     const dominantResults = results.filter((r) => r.totalScore === topScore);

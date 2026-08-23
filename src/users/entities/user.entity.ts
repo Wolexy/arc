@@ -6,49 +6,49 @@ import { TestSession } from '../../sessions/entities/test-session.entity';
 @Entity({ name: 'users' })
 export class User {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ name: 'email', unique: true })
-  email: string;
+  email!: string;
 
   @Column({ name: 'password', type: 'text' })
-  passwordHash: string;
+  passwordHash!: string;
 
   @Column({ default: 'USER' })
-  role: 'USER' | 'ADMIN';
+  role!: 'USER' | 'ADMIN';
 
-  @Column({ name: 'created_at', type: 'timestamp' })
-  createdAt: Date;
+  @Column({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
 
   @Column({ name: 'access_granted', default: false })
-  accessGranted: boolean;
+  accessGranted!: boolean;
 
-  @Column({ name: 'access_granted_at', nullable: true })
-  accessGrantedAt: Date;
+  @Column({ name: 'access_granted_at', type: 'timestamptz', nullable: true })
+  accessGrantedAt!: Date;
 
   @Column({ name: 'access_granted_by', nullable: true })
-  accessGrantedBy: number;
+  accessGrantedBy!: number;
 
-  @Column({ name: 'last_login_at', nullable: true })
-  lastLoginAt: Date;
+  @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
+  lastLoginAt!: Date | null;
 
-  @Column({ name: 'email_verified', default: false })
-  emailVerified: boolean;
+  @Column({ name: 'email_verified', type: 'boolean', default: false })
+  emailVerified!: boolean;
 
-  @Column({ name: 'email_verification_token', nullable: true, type: 'text' })
-  emailVerificationToken?: string | null;
+  @Column({ name: 'email_verification_token', nullable: true, type: 'varchar' })
+  emailVerificationToken!: string | null;
 
   @Column({
     name: 'email_verification_expires',
-    type: 'timestamp',
+    type: 'timestamptz',
     nullable: true,
   })
-  emailVerificationExpires?: Date;
+  emailVerificationExpires!: Date | null;
 
   @OneToMany(
     () => TestSession,
 
     (session) => session.user,
   )
-  testSessions: TestSession[];
+  testSessions!: TestSession[];
 }
